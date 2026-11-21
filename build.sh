@@ -14,6 +14,7 @@ version_code=${RPD_VERSION_CODE:-7}
 version_name=${RPD_VERSION_NAME:-1.0.3}
 jar="$sdk/platforms/$platform/android.jar"
 [[ -f "$jar" ]] || { echo "Android SDK platform $platform diperlukan." >&2; exit 1; }
+: "${RPD_UPSTREAM_URL:?Set RPD_UPSTREAM_URL}"
 : "${RPD_RELEASE_KEYSTORE:?Set RPD_RELEASE_KEYSTORE}"
 : "${RPD_RELEASE_STORE_PASSWORD:?Set RPD_RELEASE_STORE_PASSWORD}"
 : "${RPD_RELEASE_KEY_ALIAS:?Set RPD_RELEASE_KEY_ALIAS}"
@@ -22,13 +23,27 @@ jar="$sdk/platforms/$platform/android.jar"
 sdk_tools=$(find "$sdk/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
 tmp=$(mktemp -d /tmp/rpd-build.XXXXXX)
 trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/classes" "$tmp/dex" "$tmp/package/assets" /tmp/rpd-dms
+upstream_home=${RPD_UPSTREAM_URL%/}
+upstream_host=${upstream_home#https://}
+upstream_host=${upstream_host#http://}
+upstream_host=${upstream_host%%/*}
+upstream_host=${upstream_host%%:*}
+mkdir -p "$tmp/src" "$tmp/classes" "$tmp/dex" "$tmp/package/assets" /tmp/rpd-dms
+cat > "$tmp/src/BuildConfig.java" <<EOF
+package id.co.ramaputra.dms;
+
+final class BuildConfig {
+    static final String HOME = "$upstream_home";
+    static final String HOST = "$upstream_host";
+}
+EOF
 
 "$sdk_tools/aapt2" compile --dir "$root/res" -o "$tmp/res.zip"
 "$sdk_tools/aapt2" link -o "$tmp/base.apk" --manifest "$root/AndroidManifest.xml" \
     -I "$jar" --min-sdk-version 26 --target-sdk-version 37 \
     --version-code "$version_code" --version-name "$version_name" "$tmp/res.zip"
-javac -g:none --release 17 -cp "$jar" -d "$tmp/classes" "$root/src/MainActivity.java"
+javac -g:none --release 17 -cp "$jar" -d "$tmp/classes" \
+    "$tmp/src/BuildConfig.java" "$root/src/MainActivity.java"
 "$sdk_tools/d8" --release --min-api 26 --lib "$jar" --output "$tmp/dex" \
     "$tmp/classes/id/co/ramaputra/dms/"*.class
 cp "$tmp/dex/classes.dex" "$tmp/package/"

@@ -29,8 +29,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity {
-    private static final String HOME = "https://dmsx.ramaputra.co.id";
-    private static final String HOST = "dmsx.ramaputra.co.id";
+    private static final String HOME = BuildConfig.HOME;
+    private static final String HOST = BuildConfig.HOST;
     private static final String OFFLINE_HTML =
             "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
             + "<style>:root{color-scheme:light dark}body{margin:0;min-height:100vh;display:grid;place-items:center;"
