@@ -1,4 +1,6 @@
 <resources>
+    <color name="launch_background">#171717</color>
+    <string name="app_name">Distributor Ramaputra</string>
     <style name="Theme.Rpd" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:isLightTheme">true</item>
         <item name="android:fontFamily">sans</item>
