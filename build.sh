@@ -37,14 +37,15 @@ cp "$tmp/base.apk" "$tmp/unaligned.apk"
 (cd "$tmp/package" && zip -q -u "$tmp/unaligned.apk" classes.dex assets/system-bars.js)
 "$sdk_tools/zipalign" -f 4 "$tmp/unaligned.apk" "$tmp/aligned.apk"
 output=/tmp/rpd-dms/app-release.apk
-"$sdk_tools/apksigner" sign --ks "$RPD_RELEASE_KEYSTORE" \
+apksigner=(java --enable-native-access=ALL-UNNAMED -jar "$sdk_tools/lib/apksigner.jar")
+"${apksigner[@]}" sign --ks "$RPD_RELEASE_KEYSTORE" \
     --ks-key-alias "$RPD_RELEASE_KEY_ALIAS" --v4-signing-enabled false \
     --ks-pass env:RPD_RELEASE_STORE_PASSWORD --key-pass env:RPD_RELEASE_KEY_PASSWORD \
     --out "$output" "$tmp/aligned.apk"
-"$sdk_tools/apksigner" verify "$output"
+"${apksigner[@]}" verify "$output"
 ls -lh "$output"
 if command -v filekiwi >/dev/null 2>&1; then
-    filekiwi --title "Distributor Ramaputra $version_name" "$output"
+    (cd "$tmp" && filekiwi --title "Distributor Ramaputra $version_name" "$output")
 else
-    npx -y @file-kiwi/node --title "Distributor Ramaputra $version_name" "$output"
+    (cd "$tmp" && npx -y @file-kiwi/node --title "Distributor Ramaputra $version_name" "$output")
 fi
