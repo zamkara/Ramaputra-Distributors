@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -13,6 +14,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
@@ -30,11 +33,15 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity {
@@ -110,6 +117,7 @@ public final class MainActivity extends Activity {
         settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         webView.addJavascriptInterface(new SystemBarsBridge(), "AndroidSystemBars");
+        webView.addJavascriptInterface(new DownloadBridge(), "AndroidDownload");
         try (InputStream input = getAssets().open("system-bars.js")) {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             byte[] chunk = new byte[4096];
@@ -189,10 +197,23 @@ public final class MainActivity extends Activity {
             }
         });
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+            if (url.startsWith("blob:")) {
+                String js = "fetch(" + JSONObject.quote(url) + ").then(r=>r.blob()).then(b=>{"
+                        + "const fr=new FileReader();"
+                        + "fr.onloadend=()=>AndroidDownload.save(fr.result,"
+                        + JSONObject.quote(fileName) + "," + JSONObject.quote(mimeType != null ? mimeType : "") + ");"
+                        + "fr.readAsDataURL(b);});";
+                webView.evaluateJavascript(js, null);
+                return;
+            }
+            if (url.startsWith("data:")) {
+                saveDataUrl(url, fileName, mimeType);
+                return;
+            }
             if (!url.startsWith("https://") && !url.startsWith("http://")) return;
             DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             if (dm == null) return;
-            String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
             DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
             String cookie = CookieManager.getInstance().getCookie(url);
             if (cookie != null) req.addRequestHeader("Cookie", cookie);
@@ -297,6 +318,55 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private final class DownloadBridge {
+        @JavascriptInterface public void save(String dataUrl, String fileName, String mimeType) {
+            runOnUiThread(() -> {
+                if (webView == null) return;
+                String currentUrl = webView.getUrl();
+                if (currentUrl == null || !isFirstParty(Uri.parse(currentUrl))) return;
+                saveDataUrl(dataUrl, fileName, mimeType);
+            });
+        }
+    }
+
+    private void saveDataUrl(String dataUrl, String rawName, String mimeType) {
+        if (dataUrl == null) return;
+        int comma = dataUrl.indexOf(',');
+        if (comma < 0) return;
+        String meta = dataUrl.substring(0, comma);
+        String payload = dataUrl.substring(comma + 1);
+        String safeName = (rawName == null || rawName.isEmpty() ? "download" : rawName)
+                .replace('/', '_').replace('\\', '_');
+        String resolvedMime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "application/octet-stream";
+        new Thread(() -> {
+            try {
+                byte[] bytes = meta.contains(";base64")
+                        ? Base64.decode(payload, Base64.DEFAULT)
+                        : Uri.decode(payload).getBytes(StandardCharsets.UTF_8);
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
+                    values.put(MediaStore.Downloads.MIME_TYPE, resolvedMime);
+                    values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri == null) return;
+                    try (OutputStream out = getContentResolver().openOutputStream(uri)) {
+                        if (out != null) out.write(bytes);
+                    }
+                } else {
+                    File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    if (dir == null) return;
+                    try (OutputStream out = new FileOutputStream(new File(dir, safeName))) {
+                        out.write(bytes);
+                    }
+                }
+                runOnUiThread(() -> Toast.makeText(this, "Tersimpan: " + safeName, Toast.LENGTH_SHORT).show());
+            } catch (Exception ignored) {
+                runOnUiThread(() -> Toast.makeText(this, "Gagal menyimpan file", Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
     @Override protected void onResume() {
         super.onResume();
         if (webView != null) webView.onResume();
@@ -331,6 +401,7 @@ public final class MainActivity extends Activity {
         }
         if (webView != null) {
             webView.removeJavascriptInterface("AndroidSystemBars");
+            webView.removeJavascriptInterface("AndroidDownload");
             webView.destroy();
             webView = null;
         }
