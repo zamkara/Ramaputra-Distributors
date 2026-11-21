@@ -51,11 +51,15 @@ public final class MainActivity extends Activity {
     private static final int REQ_GEO = 2;
     private static final String OFFLINE_HTML =
             "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-            + "<style>:root{color-scheme:light dark}body{margin:0;min-height:100vh;display:grid;place-items:center;"
+            + "<style>:root{color-scheme:light dark;--bg:#fff;--fg:#171717;--btn-bg:#171717;--btn-fg:#fff}"
+            + "@media(prefers-color-scheme:dark){:root{--bg:#171717;--fg:#e6e6e6;--btn-bg:#e6e6e6;--btn-fg:#171717}}"
+            + "body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--fg);"
             + "font:15px/1.5 system-ui,sans-serif;text-align:center;padding:24px}"
-            + "button{margin-top:16px;padding:10px 20px;border:0;border-radius:8px;font:inherit;cursor:pointer}</style>"
-            + "<div><strong>Tidak dapat terhubung</strong><p>Periksa koneksi internet Anda lalu coba lagi.</p>"
-            + "<button onclick=\"location.replace('" + HOME + "')\">Muat Ulang</button></div>";
+            + "button{margin-top:16px;padding:10px 20px;border:0;border-radius:8px;font:inherit;font-weight:500;"
+            + "background:var(--btn-bg);color:var(--btn-fg);cursor:pointer;-webkit-tap-highlight-color:transparent;"
+            + "outline:none}button:active{opacity:.8}</style>"
+            + "<div><strong>Unable to connect</strong><p>Check your internet connection and try again.</p>"
+            + "<button onclick=\"location.replace('" + HOME + "')\">Reload</button></div>";
 
     private WebView webView;
     private View statusBackdrop;
@@ -149,6 +153,11 @@ public final class MainActivity extends Activity {
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
+                    int base = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                            == Configuration.UI_MODE_NIGHT_YES ? Color.rgb(23, 23, 23) : Color.WHITE;
+                    statusColor = base;
+                    navigationColor = base;
+                    applyBarColors();
                     view.loadDataWithBaseURL(HOME, OFFLINE_HTML, "text/html", "utf-8", null);
                 }
             }
@@ -360,9 +369,9 @@ public final class MainActivity extends Activity {
                         out.write(bytes);
                     }
                 }
-                runOnUiThread(() -> Toast.makeText(this, "Tersimpan: " + safeName, Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, "Saved: " + safeName, Toast.LENGTH_SHORT).show());
             } catch (Exception ignored) {
-                runOnUiThread(() -> Toast.makeText(this, "Gagal menyimpan file", Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, "Failed to save file", Toast.LENGTH_SHORT).show());
             }
         }).start();
     }

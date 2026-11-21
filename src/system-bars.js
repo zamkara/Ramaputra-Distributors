@@ -95,4 +95,31 @@
   addEventListener('scroll', update, { capture: true, passive: true });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', update);
   observe();
+
+  if (window.AndroidDownload) {
+    const blobs = new Map();
+    const createUrl = URL.createObjectURL.bind(URL);
+    const revokeUrl = URL.revokeObjectURL.bind(URL);
+    const anchorClick = HTMLAnchorElement.prototype.click;
+    URL.createObjectURL = function (obj) {
+      const url = createUrl(obj);
+      if (obj instanceof Blob) blobs.set(url, obj);
+      return url;
+    };
+    URL.revokeObjectURL = function (url) {
+      setTimeout(() => blobs.delete(url), 5000);
+      return revokeUrl(url);
+    };
+    HTMLAnchorElement.prototype.click = function () {
+      const blob = this.href && blobs.get(this.href);
+      if (blob && this.hasAttribute('download')) {
+        const name = this.getAttribute('download') || 'download';
+        const fr = new FileReader();
+        fr.onloadend = () => window.AndroidDownload.save(fr.result, name, blob.type || '');
+        fr.readAsDataURL(blob);
+        return;
+      }
+      return anchorClick.apply(this, arguments);
+    };
+  }
 })();

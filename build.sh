@@ -10,8 +10,8 @@ if [[ -f "$root/.env" ]]; then
 fi
 sdk=${ANDROID_HOME:-/home/zam/Android/Sdk}
 platform=${ANDROID_PLATFORM:-android-37.0}
-version_code=${RPD_VERSION_CODE:-7}
-version_name=${RPD_VERSION_NAME:-1.0.3}
+version_code=${RPD_VERSION_CODE:-8}
+version_name=${RPD_VERSION_NAME:-1.0.4}
 jar="$sdk/platforms/$platform/android.jar"
 [[ -f "$jar" ]] || { echo "Android SDK platform $platform diperlukan." >&2; exit 1; }
 : "${RPD_UPSTREAM_URL:?Set RPD_UPSTREAM_URL}"
