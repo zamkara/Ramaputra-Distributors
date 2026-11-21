@@ -28,18 +28,19 @@ mkdir -p "$tmp/classes" "$tmp/dex" "$tmp/package/assets" /tmp/rpd-dms
 "$sdk_tools/aapt2" link -o "$tmp/base.apk" --manifest "$root/AndroidManifest.xml" \
     -I "$jar" --min-sdk-version 26 --target-sdk-version 37 \
     --version-code "$version_code" --version-name "$version_name" "$tmp/res.zip"
-javac --release 17 -cp "$jar" -d "$tmp/classes" "$root/src/MainActivity.java"
+javac -g:none --release 17 -cp "$jar" -d "$tmp/classes" "$root/src/MainActivity.java"
 "$sdk_tools/d8" --release --min-api 26 --lib "$jar" --output "$tmp/dex" \
     "$tmp/classes/id/co/ramaputra/dms/"*.class
 cp "$tmp/dex/classes.dex" "$tmp/package/"
 cp "$root/src/system-bars.js" "$tmp/package/assets/"
 cp "$tmp/base.apk" "$tmp/unaligned.apk"
-(cd "$tmp/package" && zip -q -u "$tmp/unaligned.apk" classes.dex assets/system-bars.js)
+(cd "$tmp/package" && zip -q -9 -u "$tmp/unaligned.apk" classes.dex assets/system-bars.js)
 "$sdk_tools/zipalign" -f 4 "$tmp/unaligned.apk" "$tmp/aligned.apk"
 output=/tmp/rpd-dms/app-release.apk
 apksigner=(java --enable-native-access=ALL-UNNAMED -jar "$sdk_tools/lib/apksigner.jar")
 "${apksigner[@]}" sign --ks "$RPD_RELEASE_KEYSTORE" \
-    --ks-key-alias "$RPD_RELEASE_KEY_ALIAS" --v4-signing-enabled false \
+    --ks-key-alias "$RPD_RELEASE_KEY_ALIAS" \
+    --v1-signing-enabled false --v4-signing-enabled false \
     --ks-pass env:RPD_RELEASE_STORE_PASSWORD --key-pass env:RPD_RELEASE_KEY_PASSWORD \
     --out "$output" "$tmp/aligned.apk"
 "${apksigner[@]}" verify "$output"
