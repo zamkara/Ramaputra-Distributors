@@ -1,5 +1,7 @@
 <resources>
-    <style name="Theme.Rpd" parent="android:style/Theme.Material.Light.NoActionBar">
+    <color name="launch_background">#171717</color>
+    <string name="app_name">Distributor Ramaputra</string>
+    <style name="Theme.Rpd.Base" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:isLightTheme">true</item>
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">#E6E6E6</item>
@@ -9,4 +11,5 @@
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowBackground">@color/launch_background</item>
     </style>
+    <style name="Theme.Rpd" parent="Theme.Rpd.Base" />
 </resources>
