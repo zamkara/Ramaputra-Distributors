@@ -60,8 +60,10 @@ apksigner=(java --enable-native-access=ALL-UNNAMED -jar "$sdk_tools/lib/apksigne
     --out "$output" "$tmp/aligned.apk"
 "${apksigner[@]}" verify "$output"
 ls -lh "$output"
-if command -v filekiwi >/dev/null 2>&1; then
-    (cd "$tmp" && filekiwi --title "Distributor Ramaputra $version_name" "$output")
-else
-    (cd "$tmp" && npx -y @file-kiwi/node --title "Distributor Ramaputra $version_name" "$output")
+if [[ -z "${CI:-}" ]]; then
+    if command -v filekiwi >/dev/null 2>&1; then
+        (cd "$tmp" && filekiwi --title "Distributor Ramaputra $version_name" "$output")
+    else
+        (cd "$tmp" && npx -y @file-kiwi/node --title "Distributor Ramaputra $version_name" "$output")
+    fi
 fi
