@@ -39,7 +39,7 @@ Override either value in the environment when you need a one-off build. For a pu
 
 ## GitHub release
 
-A push of `main` to GitHub runs the Build & release workflow. The workflow compiles the signed APK, then publishes a GitHub Release. The release notes are the commit subjects included in that push, oldest first. The first push of this repository includes every commit on `main`.
+A push of `main` to GitHub runs the Build & release workflow. The workflow compiles the signed APK, then publishes a GitHub Release. The release notes are the commit subjects included in that push, oldest first. The first release lists every commit on `main`.
 
 Create these Actions secrets on the GitHub repository before that push. `GITHUB_TOKEN` is provided by Actions and is not one of them.
 
