@@ -10,6 +10,13 @@
       if (matchRgb[4] === '0') return null;
       return '#' + matchRgb.slice(1, 4).map(value => Number(value).toString(16).padStart(2, '0')).join('');
     }
+    // Newer Chromium (the WebView included) gives an oklch() token's computed color as color(srgb r g b),
+    // each 0..1 and sometimes a hair outside it.
+    const srgb = color.match(/^color\(\s*srgb\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/i);
+    if (srgb) {
+      if (srgb[4] === '0' || srgb[4] === '0%') return null;
+      return '#' + srgb.slice(1, 4).map(value => Math.round(Math.max(0, Math.min(1, Number(value))) * 255).toString(16).padStart(2, '0')).join('');
+    }
     const oklch = color.match(/^oklch\(\s*([\d.]+)(%?)\s+([\d.]+)(%?)\s+(-?[\d.]+)(?:deg)?(?:\s*\/\s*([\d.]+%?))?\s*\)$/i);
     if (!oklch || oklch[6] === '0') return null;
     const L = Number(oklch[1]) / (oklch[2] ? 100 : 1);
@@ -60,12 +67,13 @@
       const nav = document.querySelector('[data-slot="mobile-nav"]');
       const hasNav = !auth && nav && nav.getBoundingClientRect().height > 0 &&
         getComputedStyle(nav).visibility !== 'hidden';
-      const status = auth ? base : profile
+      // The sign-in pages read the color they show, as any page: on a phone their card fills the screen
+      // (--surface-base); wider, the card sits on the page's --surface-gray-1 (dmsx-fe AuthCard, 2026-11-23).
+      const status = profile
         ? token('--surface-gray-1') || base
         : visibleColor(Math.min(12, innerHeight - 1)) || base;
       const navigation = hasNav
         ? rgb(getComputedStyle(nav).backgroundColor) || token('--surface-elevation-2') || base
-        : auth ? base
         : profile ? token('--surface-gray-1') || base
         : visibleColor(Math.max(0, innerHeight - 2)) || base;
       const colors = JSON.stringify({ status, navigation });
